@@ -71,7 +71,19 @@ static void gps_event_handler(void *event_handler_arg, esp_event_base_t event_ba
                  gps->date.year + YEAR_BASE, gps->date.month, gps->date.day,
                  gps->tim.hour + TIME_ZONE, gps->tim.minute, gps->tim.second,
                  gps->latitude, gps->longitude, gps->altitude, gps->speed);
-                       
+                 double encoded_doubleLatitude = (gps->latitude + 90.0) / 1e-6;
+                 uint32_t encoded_Latitudevalue = (uint32_t)encoded_doubleLatitude;
+                 double encoded_doubleLongitude = (gps->longitude + 180) / 1e-6;
+                 uint32_t encodedLongitudevalue = (uint32_t)encoded_doubleLongitude;
+                 tx_msg.data[0] = (uint8_t)(encoded_Latitudevalue<<1)+1; //Set the first byte of the message
+                 tx_msg.data[1] = (uint8_t)(encoded_Latitudevalue>>7); //Set the second byte of the message
+                 tx_msg.data[2] = (uint8_t)(encoded_Latitudevalue>>15); //Set the second byte of the message 
+                 tx_msg.data[3] = (uint8_t)(encoded_Latitudevalue>>23)+(uint8_t)(encodedLongitudevalue<<5); //Set the second byte of the message
+                 tx_msg.data[4] = (uint8_t)(encodedLongitudevalue>>3); //Set the second byte of the message
+                 tx_msg.data[5] = (uint8_t)(encodedLongitudevalue>>11); //Set the second byte of the message 
+                 tx_msg.data[6] = (uint8_t)(encodedLongitudevalue>>19); //Set the second byte of the message
+                 tx_msg.data[7] = (uint8_t)(encodedLongitudevalue>>27); //Set the second byte of the message      
+        ESP_ERROR_CHECK(twai_transmit(&tx_msg, portMAX_DELAY)); //Send message               
         break;
     case GPS_UNKNOWN:
         /* print unknown statements */
@@ -97,8 +109,7 @@ void app_main(void)
     nmea_parser_add_handler(nmea_hdl, gps_event_handler, NULL);
 
     while (1) {
-        ESP_ERROR_CHECK(twai_transmit(&tx_msg, portMAX_DELAY)); //Send message
-        vTaskDelay(10 / portTICK_PERIOD_MS); // 每10ms延迟一次
+                vTaskDelay(10 / portTICK_PERIOD_MS); // 每10ms延迟一次
     }
 
     /* unregister event handler */
